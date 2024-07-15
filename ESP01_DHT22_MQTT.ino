@@ -2,9 +2,21 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-#define MY_BLUE_LED_PIN 1
-#define RELAY_PIN 2 //Relay Pin
+//temp sensor
+#include <DHT.h>
+#include <DHT_U.h>
 
+#define MY_BLUE_LED_PIN 1
+
+// DHT config.
+#define DHTPIN            2         // Pin which is connected to the DHT sensor.
+// Uncomment the type of sensor in use:
+//#define DHTTYPE           DHT11     // DHT 11 
+#define DHTTYPE           DHT22     // DHT 22 (AM2302)
+//#define DHTTYPE           DHT21     // DHT 21 (AM2301)
+DHT_Unified dht(DHTPIN, DHTTYPE);
+
+float myTemperature = 0, myHumidity = 0; 
 
 // Update these with values suitable for your network.
 
@@ -96,6 +108,8 @@ void reconnect() {
 
 void setup() {
   pinMode(MY_BLUE_LED_PIN , OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  dht.begin();
+
   Serial.begin(115200);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -110,12 +124,35 @@ void loop() {
   client.loop();
 
   unsigned long now = millis();
-  if (now - lastMsg > 2000) {
+  if (now - lastMsg > 5000) {
     lastMsg = now;
+    sensors_event_t event;  
+    dht.temperature().getEvent(&event);
+    if (isnan(event.temperature)) {
+      Serial.println("Error reading temperature!");
+    } else {
+      // Update temperature and humidity
+      myTemperature = (float)event.temperature;
+      Serial.print("Temperature: ");
+      Serial.print(myTemperature);
+      Serial.println(" C");
+    }
+    // Get humidity event and print its value.
+    dht.humidity().getEvent(&event);
+    if (isnan(event.relative_humidity)) {
+      Serial.println("Error reading humidity!");
+    } else {
+      myHumidity = (float)event.relative_humidity;
+      Serial.print("Humidity: ");
+      Serial.print(myHumidity);
+      Serial.println("%");
+    }
+
     ++value;
-    snprintf (msg, MSG_BUFFER_SIZE, "hello world #%ld", value);
+    snprintf (msg, MSG_BUFFER_SIZE, "Temperature: #%ld", myTemperature);
     Serial.print("Publish message: ");
     Serial.println(msg);
     client.publish("pl_esp01_relay/pl_outTopic", msg);
+   
   }
 }
