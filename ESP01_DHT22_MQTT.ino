@@ -4,11 +4,10 @@
 
 //inc. for Timecheck from NTP
 #include <NTPClient.h>
+#include <WiFiUdp.h>
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); // UTC +1 (3600 másodperc), frissítés 60 másodpercenként
-
-
 
 //temp sensor
 #include <DHT.h>
@@ -43,7 +42,7 @@ char msg[MSG_BUFFER_SIZE];
 int value = 0;
 
 void setup_wifi() {
-  pinMode(RELAY_PIN, OUTPUT);
+  //pinMode(RELAY_PIN, OUTPUT);
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
@@ -74,7 +73,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
-
+/*
   // Switch on the LED if an 1 was received as first character
   if ((char)payload[0] == '1') {
     client.publish("pl_esp01_relay/pl_stateTopic", "on");
@@ -87,7 +86,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(MY_BLUE_LED_PIN , HIGH);  // Turn the LED off by making the voltage HIGH
     digitalWrite(RELAY_PIN , HIGH);
   }
-
+*/
 }
 
 void reconnect() {
@@ -116,26 +115,32 @@ void reconnect() {
 
 void setup() {
   pinMode(MY_BLUE_LED_PIN , OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  digitalWrite(MY_BLUE_LED_PIN, LOW);
   
   timeClient.begin(); //NPT client
   dht.begin();
 
   Serial.begin(115200);
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
+  //setup_wifi();
+  //client.setServer(mqtt_server, 1883);
+  //client.setCallback(callback);
 }
 
 void loop() {
 
   if (!client.connected()) {
-    reconnect();
+    //reconnect();
   }
-  client.loop();
+  //client.loop();
 
   unsigned long now = millis();
   if (now - lastMsg > 5000) {
     lastMsg = now;
+
+    //Led status change
+
+    digitalWrite(MY_BLUE_LED_PIN, !digitalRead(MY_BLUE_LED_PIN));
+
 
     timeClient.update();
     Serial.println(timeClient.getFormattedTime());
