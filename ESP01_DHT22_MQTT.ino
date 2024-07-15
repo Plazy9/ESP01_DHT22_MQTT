@@ -2,6 +2,14 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
+//inc. for Timecheck from NTP
+#include <NTPClient.h>
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); // UTC +1 (3600 másodperc), frissítés 60 másodpercenként
+
+
+
 //temp sensor
 #include <DHT.h>
 #include <DHT_U.h>
@@ -108,6 +116,8 @@ void reconnect() {
 
 void setup() {
   pinMode(MY_BLUE_LED_PIN , OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  
+  timeClient.begin(); //NPT client
   dht.begin();
 
   Serial.begin(115200);
@@ -126,6 +136,10 @@ void loop() {
   unsigned long now = millis();
   if (now - lastMsg > 5000) {
     lastMsg = now;
+
+    timeClient.update();
+    Serial.println(timeClient.getFormattedTime());
+
     sensors_event_t event;  
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature)) {
