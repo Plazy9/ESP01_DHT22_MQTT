@@ -34,6 +34,12 @@ const char* mqtt_server = mqttServer;
 const char* mqttServerUser = mqttUser;
 const char* mqttServerPWD = mqttPassword;
 
+const String mqttMainTopic = mqttMainTopic_CFG;
+const String mqttDeviceName = mqttDeviceName_CFG; 
+
+String full_mqtt_topic = (mqttMainTopic+"/"+mqttDeviceName).c_str();
+
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
@@ -100,9 +106,9 @@ void reconnect() {
     if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD)) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("pl_esp01_relay/pl_outTopic", "hello world");
+      client.publish((full_mqtt_topic+"/outTopic").c_str(), "hello world");
       // ... and resubscribe
-      client.subscribe("pl_esp01_relay/pl_commandTopic");
+      client.subscribe((full_mqtt_topic+"/commandTopic").c_str());
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -121,17 +127,17 @@ void setup() {
   dht.begin();
 
   Serial.begin(115200);
-  //setup_wifi();
-  //client.setServer(mqtt_server, 1883);
-  //client.setCallback(callback);
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 }
 
 void loop() {
 
   if (!client.connected()) {
-    //reconnect();
+    reconnect();
   }
-  //client.loop();
+  client.loop();
 
   unsigned long now = millis();
   if (now - lastMsg > 5000) {
@@ -168,10 +174,19 @@ void loop() {
     }
 
     ++value;
-    snprintf (msg, MSG_BUFFER_SIZE, "Temperature: #%ld", myTemperature);
+    snprintf (msg, MSG_BUFFER_SIZE, "active", value);
     Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("pl_esp01_relay/pl_outTopic", msg);
-   
+    Serial.println((full_mqtt_topic+"/status").c_str());
+    client.publish((full_mqtt_topic+"/status").c_str() , msg);
+
+    snprintf (msg, MSG_BUFFER_SIZE, "online", value);
+    client.publish((full_mqtt_topic+"/online").c_str() , msg);
+
+    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+    client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
+
+    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+    client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+
   }
 }
