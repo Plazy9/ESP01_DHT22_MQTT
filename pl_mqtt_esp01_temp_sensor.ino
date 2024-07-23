@@ -52,33 +52,33 @@ void setup_wifi() {
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  //Serial.print("Connecting to ");
+  //Serial.println(ssid);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    //Serial.print(".");
   }
 
   randomSeed(micros());
 
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  //Serial.println("");
+  //Serial.println("WiFi connected");
+  //Serial.println("IP address: ");
+  //Serial.println(WiFi.localIP());
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
+  //Serial.print("Message arrived [");
+  //Serial.print(topic);
+  //Serial.print("] ");
   for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
+    //Serial.print((char)payload[i]);
   }
-  Serial.println();
+  //Serial.println();
 /*
   // Switch on the LED if an 1 was received as first character
   if ((char)payload[0] == '1') {
@@ -98,21 +98,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
+    //Serial.print("Attempting MQTT connection...");
     // Create a random client ID
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD)) {
-      Serial.println("connected");
+      //Serial.println("connected");
       // Once connected, publish an announcement...
       client.publish((full_mqtt_topic+"/outTopic").c_str(), "hello world");
       // ... and resubscribe
       client.subscribe((full_mqtt_topic+"/commandTopic").c_str());
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      //Serial.print("failed, rc=");
+      //Serial.print(client.state());
+      //Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(5000);
     }
@@ -126,7 +126,7 @@ void setup() {
   timeClient.begin(); //NPT client
   dht.begin();
 
-  Serial.begin(115200);
+  //Serial.begin(115200);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
@@ -147,42 +147,39 @@ void loop() {
 
     digitalWrite(MY_BLUE_LED_PIN, !digitalRead(MY_BLUE_LED_PIN));
 
-
     timeClient.update();
-    Serial.println(timeClient.getFormattedTime());
+    //Serial.println(timeClient.getFormattedTime());
 
     sensors_event_t event;  
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature)) {
-      Serial.println("Error reading temperature!");
+      //Serial.println("Error reading temperature!");
     } else {
       // Update temperature and humidity
       myTemperature = (float)event.temperature;
-      Serial.print("Temperature: ");
-      Serial.print(myTemperature);
-      Serial.println(" C");
+      //Serial.print("Temperature: ");
+      //Serial.print(myTemperature);
+      //Serial.println(" C");
     }
     // Get humidity event and print its value.
     dht.humidity().getEvent(&event);
     if (isnan(event.relative_humidity)) {
-      Serial.println("Error reading humidity!");
+      //Serial.println("Error reading humidity!");
     } else {
       myHumidity = (float)event.relative_humidity;
-      Serial.print("Humidity: ");
-      Serial.print(myHumidity);
-      Serial.println("%");
+      //Serial.print("Humidity: ");
+      //Serial.print(myHumidity);
+      //Serial.println("%");
     }
 
     ++value;
     snprintf (msg, MSG_BUFFER_SIZE, "active", value);
-    Serial.print("Publish message: ");
-    Serial.println((full_mqtt_topic+"/status").c_str());
     client.publish((full_mqtt_topic+"/status").c_str() , msg);
 
     snprintf (msg, MSG_BUFFER_SIZE, "online", value);
     client.publish((full_mqtt_topic+"/online").c_str() , msg);
 
-    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
     client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
 
     snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
