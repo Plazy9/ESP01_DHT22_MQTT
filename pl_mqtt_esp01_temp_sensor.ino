@@ -3,11 +3,11 @@
 #include <PubSubClient.h>
 
 //inc. for Timecheck from NTP
-#include <NTPClient.h>
-#include <WiFiUdp.h>
+//#include <NTPClient.h>
+//#include <WiFiUdp.h>
 
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); // UTC +1 (3600 másodperc), frissítés 60 másodpercenként
+//WiFiUDP ntpUDP;
+//NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); // UTC +1 (3600 másodperc), frissítés 60 másodpercenként
 
 //temp sensor
 #include <DHT.h>
@@ -125,7 +125,7 @@ void setup() {
   pinMode(MY_BLUE_LED_PIN , OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   digitalWrite(MY_BLUE_LED_PIN, LOW);
   
-  timeClient.begin(); //NPT client
+  //timeClient.begin(); //NPT client
   dht.begin();
 
   //Serial.begin(115200);
@@ -142,14 +142,14 @@ void loop() {
   client.loop();
 
   unsigned long now = millis();
-  if (now - lastMsg > 5000) {
+  if (now - lastMsg > 15000) {
     lastMsg = now;
 
     //Led status change
 
     digitalWrite(MY_BLUE_LED_PIN, !digitalRead(MY_BLUE_LED_PIN));
 
-    timeClient.update();
+    //timeClient.update();
     //Serial.println(timeClient.getFormattedTime());
 
     sensors_event_t event;  
