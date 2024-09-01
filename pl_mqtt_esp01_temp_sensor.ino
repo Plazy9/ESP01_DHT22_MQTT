@@ -103,10 +103,12 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD)) {
+    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD, (full_mqtt_topic+"/status").c_str(), 0, true, "offline")) {
       //Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish((full_mqtt_topic+"/outTopic").c_str(), "hello world");
+      snprintf (msg, MSG_BUFFER_SIZE, "online");
+      client.publish((full_mqtt_topic+"/status").c_str() , msg);
+
       // ... and resubscribe
       client.subscribe((full_mqtt_topic+"/commandTopic").c_str());
     } else {
@@ -172,12 +174,7 @@ void loop() {
       //Serial.println("%");
     }
 
-    ++value;
-    snprintf (msg, MSG_BUFFER_SIZE, "active", value);
-    client.publish((full_mqtt_topic+"/status").c_str() , msg);
-
-    snprintf (msg, MSG_BUFFER_SIZE, "online", value);
-    client.publish((full_mqtt_topic+"/online").c_str() , msg);
+    //++value;
 
     snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
     client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
