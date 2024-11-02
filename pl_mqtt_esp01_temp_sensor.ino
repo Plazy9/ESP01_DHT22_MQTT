@@ -11,7 +11,7 @@
 
 //temp sensor
 #include <DHT.h>
-#include <DHT_U.h>
+//#include <DHT_U.h>
 
 #define MY_BLUE_LED_PIN 1
 
@@ -21,7 +21,8 @@
 //#define DHTTYPE           DHT11     // DHT 11 
 #define DHTTYPE           DHT22     // DHT 22 (AM2302)
 //#define DHTTYPE           DHT21     // DHT 21 (AM2301)
-DHT_Unified dht(DHTPIN, DHTTYPE);
+DHT dht = DHT(DHTPIN, DHTTYPE);
+//DHT_Unified dht(DHTPIN, DHTTYPE);
 
 float myTemperature = 0, myHumidity = 0; 
 
@@ -43,6 +44,7 @@ String full_mqtt_topic = (mqttMainTopic+"/"+mqttDeviceName).c_str();
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
+unsigned long lastMsg2 = 0;
 #define MSG_BUFFER_SIZE	(50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
@@ -108,7 +110,10 @@ void reconnect() {
       // Once connected, publish an announcement...
       snprintf (msg, MSG_BUFFER_SIZE, "online");
       client.publish((full_mqtt_topic+"/status").c_str() , msg);
-
+      
+      snprintf (msg, MSG_BUFFER_SIZE, mqttDeviceName.c_str());
+      client.publish((full_mqtt_topic+"/deviceName").c_str() , msg);
+      
       // ... and resubscribe
       client.subscribe((full_mqtt_topic+"/commandTopic").c_str());
     } else {
@@ -142,6 +147,11 @@ void loop() {
   client.loop();
 
   unsigned long now = millis();
+  if (now - lastMsg2 > 60 * 5 * 1000) {
+    lastMsg2 = now;
+    //ESP.restart();
+  }
+
   if (now - lastMsg > 15000) {
     lastMsg = now;
 
@@ -152,35 +162,68 @@ void loop() {
     //timeClient.update();
     //Serial.println(timeClient.getFormattedTime());
 
+/*
     sensors_event_t event;  
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature)) {
       //Serial.println("Error reading temperature!");
+      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
     } else {
       // Update temperature and humidity
       myTemperature = (float)event.temperature;
       //Serial.print("Temperature: ");
       //Serial.print(myTemperature);
       //Serial.println(" C");
+      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
+      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
     }
     // Get humidity event and print its value.
     dht.humidity().getEvent(&event);
     if (isnan(event.relative_humidity)) {
       //Serial.println("Error reading humidity!");
+      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
     } else {
       myHumidity = (float)event.relative_humidity;
       //Serial.print("Humidity: ");
       //Serial.print(myHumidity);
       //Serial.println("%");
+      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+    }
+*/
+    float myHumidity = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    float myTemperature = dht.readTemperature();
+    // Read temperature as Fahrenheit (isFahrenheit = true)
+    //float f = dht.readTemperature(true);
+
+    if(isnan(myTemperature)){
+      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
+    }else{
+      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
+      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
     }
 
-    //++value;
+    if(isnan(myHumidity)){
+      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+    }else{
+      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+    }
 
-    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
-    client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
+    // Compute heat index in Fahrenheit (the default)
+    //float hif = dht.computeHeatIndex(f, h);
+    // Compute heat index in Celsius (isFahreheit = false)
+    float hic = dht.computeHeatIndex(myTemperature, myHumidity, false);
 
-    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
-    client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+
+    ++value;
+    snprintf (msg, MSG_BUFFER_SIZE, "%f", hic);
+    client.publish((full_mqtt_topic+"/dataSent").c_str() , msg);
 
   }
 }
