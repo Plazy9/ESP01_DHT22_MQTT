@@ -44,7 +44,8 @@ String full_mqtt_topic = (mqttMainTopic+"/"+mqttDeviceName).c_str();
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
-unsigned long lastMsg2 = 0;
+unsigned long lastTimeSentMsg = 0;
+unsigned long lastTimeSentTemp = 0;
 #define MSG_BUFFER_SIZE	(50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
@@ -105,7 +106,7 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD, (full_mqtt_topic+"/status").c_str(), 0, true, "offline")) {
+    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD, (full_mqtt_topic+"/status").c_str(), 1, true, "offline")) {
       //Serial.println("connected");
       // Once connected, publish an announcement...
       snprintf (msg, MSG_BUFFER_SIZE, "online");
@@ -147,11 +148,13 @@ void loop() {
   client.loop();
 
   unsigned long now = millis();
-  if (now - lastMsg2 > 60 * 5 * 1000) {
-    lastMsg2 = now;
+  
+  //If no new temperature data has been sent for 10 minutes then
+  if (now - lastTimeSentMsg > 60 * 10 * 1000) {
+    
     //ESP.restart();
   }
-
+  
   if (now - lastMsg > 15000) {
     lastMsg = now;
 
@@ -162,40 +165,10 @@ void loop() {
     //timeClient.update();
     //Serial.println(timeClient.getFormattedTime());
 
-/*
-    sensors_event_t event;  
-    dht.temperature().getEvent(&event);
-    if (isnan(event.temperature)) {
-      //Serial.println("Error reading temperature!");
-      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
-      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
-    } else {
-      // Update temperature and humidity
-      myTemperature = (float)event.temperature;
-      //Serial.print("Temperature: ");
-      //Serial.print(myTemperature);
-      //Serial.println(" C");
-      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
-      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
-    }
-    // Get humidity event and print its value.
-    dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity)) {
-      //Serial.println("Error reading humidity!");
-      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
-      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
-    } else {
-      myHumidity = (float)event.relative_humidity;
-      //Serial.print("Humidity: ");
-      //Serial.print(myHumidity);
-      //Serial.println("%");
-      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
-      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
-    }
-*/
     float myHumidity = dht.readHumidity();
     // Read temperature as Celsius (the default)
     float myTemperature = dht.readTemperature();
+    
     // Read temperature as Fahrenheit (isFahrenheit = true)
     //float f = dht.readTemperature(true);
 
@@ -205,6 +178,12 @@ void loop() {
     }else{
       snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
       client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
+      if(myTemperature != lastTimeSentTemp){
+        lastTimeSentTemp = myTemperature;
+        snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", (now-lastTimeSentMsg)/1000.0);
+        lastTimeSentMsg = now;
+        client.publish((full_mqtt_topic+"/lastDataSent").c_str() , msg);
+      }
     }
 
     if(isnan(myHumidity)){
