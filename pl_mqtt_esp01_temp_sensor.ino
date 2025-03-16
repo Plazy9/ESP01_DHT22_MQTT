@@ -9,9 +9,8 @@
 //WiFiUDP ntpUDP;
 //NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); // UTC +1 (3600 másodperc), frissítés 60 másodpercenként
 
-//temp sensor
+//temp sensor DHT
 #include <DHT.h>
-//#include <DHT_U.h>
 
 #define MY_BLUE_LED_PIN 1
 
@@ -25,6 +24,7 @@ DHT dht = DHT(DHTPIN, DHTTYPE);
 //DHT_Unified dht(DHTPIN, DHTTYPE);
 
 float myTemperature = 0, myHumidity = 0; 
+float myTemperature_last = 0, myHumidity_last = 0; 
 
 // Update these with values suitable for your network.
 
@@ -151,7 +151,7 @@ void loop() {
   
   //If no new temperature data has been sent for 10 minutes then
   if (now - lastTimeSentMsg > 60 * 10 * 1000) {
-    
+
     //ESP.restart();
   }
   
@@ -171,38 +171,41 @@ void loop() {
     
     // Read temperature as Fahrenheit (isFahrenheit = true)
     //float f = dht.readTemperature(true);
-
-    if(isnan(myTemperature)){
-      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
-      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
-    }else{
-      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
-      client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
-      if(myTemperature != lastTimeSentTemp){
-        lastTimeSentTemp = myTemperature;
-        snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", (now-lastTimeSentMsg)/1000.0);
-        lastTimeSentMsg = now;
-        client.publish((full_mqtt_topic+"/lastDataSent").c_str() , msg);
+    if(myTemperature!=myTemperature_last ||  myHumidity!=myHumidity_last){
+      if(isnan(myTemperature)){
+        snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+        client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
+      }else{
+        snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myTemperature);
+        client.publish((full_mqtt_topic+"/temperature").c_str() , msg);
       }
+
+      if(isnan(myHumidity)){
+        snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
+        client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+      }else{
+        snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
+        client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
+      }
+
+      lastTimeSentMsg = now;      
+      //data sent time form lasttime
+      
+      
+      //hőérzet a páratartalom függvényében
+      // Compute heat index in Fahrenheit (the default)
+      //float hif = dht.computeHeatIndex(f, h, isFarenheit=true);
+      // Compute heat index in Celsius (isFahreheit = false)
+      /*
+      float hic = dht.computeHeatIndex(myTemperature, myHumidity, false);
+      ++value;
+      snprintf (msg, MSG_BUFFER_SIZE, "%f", hic);
+      client.publish((full_mqtt_topic+"/dataSent").c_str() , msg);
+      */
+      myTemperature_last=myTemperature;
+      myHumidity_last=myHumidity;
     }
-
-    if(isnan(myHumidity)){
-      snprintf (msg, MSG_BUFFER_SIZE, "%s", "n/a");
-      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
-    }else{
-      snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", myHumidity);
-      client.publish((full_mqtt_topic+"/humidity").c_str() , msg);
-    }
-
-    // Compute heat index in Fahrenheit (the default)
-    //float hif = dht.computeHeatIndex(f, h);
-    // Compute heat index in Celsius (isFahreheit = false)
-    float hic = dht.computeHeatIndex(myTemperature, myHumidity, false);
-
-
-    ++value;
-    snprintf (msg, MSG_BUFFER_SIZE, "%f", hic);
-    client.publish((full_mqtt_topic+"/dataSent").c_str() , msg);
-
+    snprintf (msg, MSG_BUFFER_SIZE, "%.2lf", (now-lastTimeSentMsg)/1000.0);
+    client.publish((full_mqtt_topic+"/lastDataSent").c_str() , msg);
   }
 }
